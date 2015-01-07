@@ -13,7 +13,7 @@ specified nginx upstreams.
 * *env.percentiles* — which percentiles to draw on time graphs (optional, list of percentiles separated by spaces, default - 80)
 
 ## Installation
-Copy file to directory /usr/share/munin/pligins/ and create symbolic link to /etc/munin/plugins.
+Copy file to directory /usr/share/munin/pligins/ and create symbolic link to /etc/munin/plugins/nginx_upstream_multi_<name of upstream>.
 
 Specify log_format at /etc/nginx/conf.d/upstream.conf:
 ```
@@ -27,7 +27,7 @@ access_log /var/log/nginx/upstream.log upstream;
 
 And specify some options in munin-node.conf:
 ```
-[nginx_upstream_multi_upstream]
+[nginx_upstream_multi_<name of upstream>]
 env.graphs cache http time request
 env.log /var/log/nginx/upstream.log
 env.upstream 10.0.0.1:80 10.0.0.2:8080 unix:/var/run/php5-fpm.sock
