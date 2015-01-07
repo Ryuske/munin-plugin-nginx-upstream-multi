@@ -129,7 +129,7 @@ if len(sys.argv) == 2 and sys.argv[1] == "config":
         for upstream in upstreams.keys():
             print ""
             print "multigraph nginx_http"
-            print "graph_title HTTP - " % sanitize(upstream)
+            print "graph_title HTTP - %s" % sanitize(upstream)
             print "graph_vlabel Requests per second"
             print "graph_category nginx"
             keylist = httpStatusList.keys()
@@ -143,7 +143,7 @@ if len(sys.argv) == 2 and sys.argv[1] == "config":
         for upstream in upstreams.keys():
             print ""
             print "multigraph nginx_cache"
-            print "graph_title Cache - " % sanitize(upstream)
+            print "graph_title Cache - %s" % sanitize(upstream)
             print "graph_vlabel Requests per second"
             print "graph_category nginx"
             for status in cacheStatusList:
