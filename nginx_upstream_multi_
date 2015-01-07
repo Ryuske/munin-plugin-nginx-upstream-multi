@@ -1,40 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# vim: set fileencoding=utf-8
-#
 # Munin plugin to monitor requests number, cache statuses, http status codes and average request times of
 # specified nginx upstreams.
 #
-# Copyright Igor Borodikhin
+# Forked From Igor Borodikhin (https://github.com/iborodikhin/munin-plugin-nginx-upstream-multi)
+# Copyright Kenyon Haliwell
 #
 # License : GPLv3
-#
-# Configuration parameters:
-# env.graphs - which graphs to produce (optional, list of graphs separated by spaces, default - cache http time request)
-# env.log - log file path (mandatory, ex.: /var/log/nginx/upstream.log)
-# env.upstream - list of upstreams to monitor (mandatory, including port numbers separated by space, ex.: 10.0.0.1:80 10.0.0.2:8080)
-# env.statuses - list of http status codes to monitor (optional, default - all statuses, ex.: 200 403 404 410 500 502)
-# env.percentiles - which percentiles to draw on time graphs (optional, list of percentiles separated by spaces, default - 80)
-#
-# ## Installation
-# Copy file to directory /usr/share/munin/pligins/ and create symbolic link(s) for each log file you wish to monitor.
-#
-# Specify log_format at /etc/nginx/conf.d/upstream.conf:
-# log_format upstream "ua=[$upstream_addr] ut=[$upstream_response_time] us=[$upstream_status] cs=[$upstream_cache_status]"
-#
-# Use it in your site configuration (/etc/nginx/sites-enabled/anything.conf):
-# access_log /var/log/nginx/upstream.log upstream;
-#
-# And specify some options in munin-node.conf:
-#
-#     [nginx_upstream_multi_upstream]
-#     env.graphs cache http time request
-#     env.log /var/log/nginx/upstream.log
-#     env.upstream 10.0.0.1:80 10.0.0.2:8080 unix:/tmp/upstream3
-#     env.statuses 200 403 404 410 500 502
-#     env.percentiles 50 80
-#
-#%# family=contrib
 
 import os, sys, re, copy, math
 from time import time
@@ -126,32 +97,27 @@ def sanitize(string):
     return string.replace(".", "_").replace(":", "_").replace("/", "_").replace("-", "_")
 
 if len(sys.argv) == 2 and sys.argv[1] == "config":
-    # Parent graph declaration
-    print "multigraph nginx_upstream_multi_%s" % siteName.replace(".", "_")
-    print "graph_title Requests number"
-    print "graph_vlabel rps"
-    print "graph_category nginx"
-    for upstream in upstreams.keys():
-        print "us%s_requests.label %s" % (sanitize(upstream), upstream)
-
     # Requests graph declaration
     if "request" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_requests" % (sanitize(siteName), sanitize(upstream))
-            print "graph_title Requests number - %s" % upstream
-            print "graph_vlabel rps"
+            print "multigraph nginx_requests"
+            print "graph_title Nginx Requests"
+            print "graph_vlabel Requests per second"
             print "graph_category nginx"
-            print "us%s_requests.label %s" % (sanitize(upstream), upstream)
+
+            for upstream in upstreams.keys():
+                print "us%s_requests.label %s" % (sanitize(upstream), upstream)
+
             print ""
 
     # Times graph declaration
     if "time" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_times" % (sanitize(siteName), sanitize(upstream))
-            print "graph_title Request time - %s" % upstream
-            print "graph_vlabel sec."
+            print "multigraph nginx_response_time"
+            print "graph_title Nginx Request Times - %s" % sanitize(upstream)
+            print "graph_vlabel seconds"
             print "graph_category nginx"
             print "us%s_times.label average" % (sanitize(upstream))
             for percentile in percentiles:
@@ -162,9 +128,9 @@ if len(sys.argv) == 2 and sys.argv[1] == "config":
     if "http" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_statuses" % (sanitize(siteName), sanitize(upstream))
-            print "graph_title HTTP - %s" % upstream
-            print "graph_vlabel rps"
+            print "multigraph nginx_http"
+            print "graph_title HTTP - " % sanitize(upstream)
+            print "graph_vlabel Requests per second"
             print "graph_category nginx"
             keylist = httpStatusList.keys()
             keylist.sort()
@@ -176,9 +142,9 @@ if len(sys.argv) == 2 and sys.argv[1] == "config":
     if "cache" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_cache" % (sanitize(siteName), sanitize(upstream))
-            print "graph_title Cache - %s" % upstream
-            print "graph_vlabel rps"
+            print "multigraph nginx_cache"
+            print "graph_title Cache - " % sanitize(upstream)
+            print "graph_vlabel Requests per second"
             print "graph_category nginx"
             for status in cacheStatusList:
                 print "us%s_%s_cache.label %s" % (sanitize(status), sanitize(upstream), status)
@@ -283,19 +249,11 @@ else:
 
     logHandle.close()
 
-    # Parent graph data
-    for upstream in upstreams.keys():
-        value = 0
-        if timeElapsed > 0:
-            value = upstreams[upstream]["requests"] / timeElapsed
-
-        print "us%s_requests.value %s" % (sanitize(upstream), value)
-
     # Requests graph data
     if "request" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_requests" % (sanitize(siteName), sanitize(upstream))
+            print "multigraph nginx_requests"
 
             value = 0
             if timeElapsed > 0:
@@ -312,7 +270,7 @@ else:
                 uTime = upstreams[upstream]["time"] / upstreams[upstream]["requests"]
                 upstreams[upstream]["times"].sort()
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_times" % (sanitize(siteName), sanitize(upstream))
+            print "multigraph nginx_response_times"
             print "us%s_times.value %s" % (sanitize(upstream), uTime)
             for percentile in percentiles:
                 percentileValue = 0
@@ -332,7 +290,7 @@ else:
     if "http" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_statuses" % (sanitize(siteName), sanitize(upstream))
+            print "multigraph nginx_http"
             keylist = httpStatusList.keys()
             keylist.sort()
             for status in keylist:
@@ -347,7 +305,7 @@ else:
     if "cache" in graphs_enabled:
         for upstream in upstreams.keys():
             print ""
-            print "multigraph nginx_upstream_multi_%s.%s_cache" % (sanitize(siteName), sanitize(upstream))
+            print "multigraph nginx_cache"
             for status in cacheStatusList:
                 value = 0
                 if timeElapsed > 0:
